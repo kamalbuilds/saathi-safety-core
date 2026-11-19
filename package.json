@@ -1,0 +1,13 @@
+{
+  "name": "saathi-safety-core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Deterministic multilingual crisis routing for an AI recovery companion. English, Hindi, Devanagari and Romanized Hinglish.",
+  "engines": { "node": ">=23.6" },
+  "scripts": {
+    "test": "node --test test/*.test.ts",
+    "eval": "node scripts/eval.ts",
+    "mutate": "sh scripts/mutation-check.sh"
+  }
+}
