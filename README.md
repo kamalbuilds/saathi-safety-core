@@ -24,14 +24,15 @@ user message
 | Only an authenticated clinician release lowers a state, one step at a time, and only when signals are clear | `HumanRelease` |
 | Instruction-like text inside therapist profiles or uploads is withheld from the model | `sanitizeUntrustedContext` |
 | Model output with doses, method detail, diagnoses, anti-therapy advice, shaming or a system-prompt canary is replaced | `validateOutput` |
-| The audit log stores routing flags only, never message text | `SafetyEvent` |
+| Danger disclosed in pieces across turns ("I have pills" now, "tonight I'll do it" later) combines into one EMERGENCY decision | `RiskMemory` |
+| The audit log and risk memory store routing flags only, never message text | `SafetyEvent`, `RiskMemory` |
 
 ## Run it
 
 Node 23.6 or later. Zero dependencies.
 
 ```sh
-npm test         # 80 tests: corpus routing, multi-turn state, gateway against a hostile model
+npm test         # 82 tests: corpus routing, multi-turn state, gateway against a hostile model
 npm run eval     # per-language and per-state report, plus a never-tuned blind set
 npm run mutate   # breaks each guard in a scratch copy; every mutation must turn the suite red
 ```
@@ -51,6 +52,7 @@ KILLED    no de-obfuscation
 KILLED    no homoglyph folding
 KILLED    no Hinglish ideation pattern
 KILLED    educational guard removed
+KILLED    no cross-turn risk memory
 survivors: 0
 ```
 

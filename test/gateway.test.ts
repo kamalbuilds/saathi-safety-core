@@ -84,3 +84,22 @@ test("ordinary recovery conversation goes to the model and through", async () =>
   assert.equal(store.events.length, 1);
   assert.equal(JSON.stringify(store.events).includes("porn dekhne"), false, "audit log must not store message text");
 });
+
+test("split disclosure: means in one turn and intent in a later turn combine into EMERGENCY", async () => {
+  const llm = new HostileCompanion(() => "That sounds like a lot to carry. What's on your mind tonight?");
+  const store = new MemoryStore();
+  const turns = ["mere paas sleeping pills bhi hain", "office mein bahut kaam tha aaj", "aaj raat khatam kar dunga"];
+  const states = [];
+  for (const message of turns) states.push((await handleMessage({ sessionId: "s7", message }, { companion: llm, store })).state);
+  assert.deepEqual(states, ["NORMAL", "NORMAL", "EMERGENCY"]);
+  assert.equal(JSON.stringify(store.events).includes("sleeping pills"), false, "risk memory stores flags, not text");
+});
+
+test("split disclosure in English: intent first, means later", async () => {
+  const llm = new HostileCompanion(() => "I'm here with you.");
+  const store = new MemoryStore();
+  await handleMessage({ sessionId: "s8", message: "I think I'm going to end it" }, { companion: llm, store });
+  const r = await handleMessage({ sessionId: "s8", message: "I bought pills today", answer: "NOT_IMMEDIATE" }, { companion: llm, store });
+  assert.equal(r.state, "EMERGENCY");
+  assert.equal(r.response.primaryAction?.tel, "112");
+});

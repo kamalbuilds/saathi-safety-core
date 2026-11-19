@@ -27,6 +27,7 @@ mutate "no de-obfuscation"             src/normalize.ts 'let s = input.normalize
 mutate "no homoglyph folding"          src/normalize.ts 's = s.replace(/./gu, (ch) => HOMOGLYPHS[ch] ?? ch);' ''
 mutate "no Hinglish ideation pattern"  src/signals.ts 'new RegExp(`\\b${JEENE}' 'new RegExp(`\\bxx${JEENE}'
 mutate "educational guard removed"     src/signals.ts '&& !EDUCATIONAL.test(text) &&' '&&'
+mutate "no cross-turn risk memory"     src/gateway.ts 'planOrMeans: prior.planOrMeans || signals.planOrMeans' 'planOrMeans: signals.planOrMeans'
 rm -rf "$WORK"
 echo "survivors: $survived"
 [ "$survived" -eq 0 ]

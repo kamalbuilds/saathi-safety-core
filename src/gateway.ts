@@ -17,10 +17,25 @@ export interface Companion {
   generate(req: CompanionRequest): Promise<string>;
 }
 
-export interface SessionStore {
-  load(sessionId: string): Promise<SafetyState>;
-  save(sessionId: string, state: SafetyState, event: SafetyEvent): Promise<void>;
+// Danger is often disclosed in pieces: "I have pills" now, "tonight I'll do it" three messages later.
+// The session remembers these flags (never the text) so the pieces combine into one decision.
+export interface RiskMemory {
+  planOrMeans: boolean;
+  currentIntent: boolean;
+  cannotStaySafeNow: boolean;
 }
+
+export interface SessionRecord {
+  state: SafetyState;
+  risk: RiskMemory;
+}
+
+export interface SessionStore {
+  load(sessionId: string): Promise<SessionRecord>;
+  save(sessionId: string, record: SessionRecord, event: SafetyEvent): Promise<void>;
+}
+
+const NO_RISK: RiskMemory = { planOrMeans: false, currentIntent: false, cannotStaySafeNow: false };
 
 // Minimised audit record: no message text, only what routing needs.
 export interface SafetyEvent {
@@ -88,13 +103,20 @@ const FALLBACK = "I want to stay careful here, so I'll keep this simple. Would i
 export async function handleMessage(turn: Turn, deps: { companion: Companion; store: SessionStore; now?: () => Date }): Promise<TurnResult> {
   const now = deps.now ?? (() => new Date());
   const signals = detectSafetySignals(turn.message);
-  const from = await deps.store.load(turn.sessionId);
-  const to = transition(from, signals, turn.answer ?? null, turn.release ?? null);
+  const { state: from, risk: prior } = await deps.store.load(turn.sessionId);
+  const risk: RiskMemory = {
+    planOrMeans: prior.planOrMeans || signals.planOrMeans,
+    currentIntent: prior.currentIntent || signals.currentIntent,
+    cannotStaySafeNow: prior.cannotStaySafeNow || signals.cannotStaySafeNow,
+  };
+  const to = transition(from, { ...signals, ...risk }, turn.answer ?? null, turn.release ?? null);
+  // A clinician release that returns the session to NORMAL also clears the accumulated flags.
+  const record: SessionRecord = { state: to, risk: to === "NORMAL" && turn.release ? NO_RISK : risk };
   const { matched, language, ...flags } = signals;
   const event: SafetyEvent = { at: now().toISOString(), from, to, signals: flags, outputBlocked: false };
 
   if (to !== "NORMAL") {
-    await deps.store.save(turn.sessionId, to, event);
+    await deps.store.save(turn.sessionId, record, event);
     const response = getSafetyActions(to);
     return { state: to, source: "safety_template", text: response.message ?? "", response };
   }
@@ -112,22 +134,22 @@ export async function handleMessage(turn: Turn, deps: { companion: Companion; st
   const outputCrisis = outSignals.attemptOrInjuryOrPoisoningNow || outSignals.currentIntent;
   if (!verdict.ok || outputCrisis) {
     event.outputBlocked = true;
-    await deps.store.save(turn.sessionId, to, event);
+    await deps.store.save(turn.sessionId, record, event);
     return { state: to, source: "validator_fallback", text: FALLBACK, response: { bypassLLM: false } };
   }
 
-  await deps.store.save(turn.sessionId, to, event);
+  await deps.store.save(turn.sessionId, record, event);
   return { state: to, source: "companion", text: draft, response: { bypassLLM: false } };
 }
 
 export class MemoryStore implements SessionStore {
-  states = new Map<string, SafetyState>();
+  records = new Map<string, SessionRecord>();
   events: SafetyEvent[] = [];
-  async load(id: string) {
-    return this.states.get(id) ?? "NORMAL";
+  async load(id: string): Promise<SessionRecord> {
+    return this.records.get(id) ?? { state: "NORMAL", risk: NO_RISK };
   }
-  async save(id: string, state: SafetyState, event: SafetyEvent) {
-    this.states.set(id, state);
+  async save(id: string, record: SessionRecord, event: SafetyEvent) {
+    this.records.set(id, record);
     this.events.push(event);
   }
 }
