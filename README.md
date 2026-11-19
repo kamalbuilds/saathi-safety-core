@@ -4,6 +4,10 @@ The crisis-routing core of Saathi, a private recovery companion for adults in In
 
 The rule this repo enforces: **the language model never decides whether safety applies.** A deterministic layer reads every message first, in English, Hindi, Devanagari and Romanized Hinglish, and owns the conversation state. When it detects risk, the model is not called at all.
 
+![Saathi safety core architecture](docs/architecture.png)
+
+Interactive version: [`docs/architecture.html`](docs/architecture.html) (pan, zoom, trace any route).
+
 ```
 user message
   -> normalize        (NFKC, zero-width, Cyrillic homoglyphs, leetspeak, s p a c i n g, elongation)

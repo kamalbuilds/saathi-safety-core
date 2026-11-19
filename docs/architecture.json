@@ -1,0 +1,61 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Saathi Safety Core: the model never decides whether safety applies",
+    "quality_profile": "showcase"
+  },
+  "lanes": [
+    { "id": "person", "label": "Person" },
+    { "id": "gate", "label": "Deterministic gate" },
+    { "id": "crisis", "label": "Crisis path", "variant": "exception" },
+    { "id": "normal", "label": "Normal path" }
+  ],
+  "phases": [
+    { "id": "read", "label": "Read", "fromCol": 0, "toCol": 2 },
+    { "id": "decide", "label": "Decide", "fromCol": 3, "toCol": 3, "variant": "security" },
+    { "id": "respond", "label": "Respond", "fromCol": 4, "toCol": 5, "variant": "emphasis" }
+  ],
+  "groups": [
+    { "id": "no_model", "label": "Model never called", "lane": "crisis", "fromCol": 4, "toCol": 5, "variant": "security" }
+  ],
+  "mainPath": ["msg", "normalize", "detect", "policy", "template", "calls"],
+  "nodes": [
+    { "id": "msg", "lane": "person", "col": 0, "type": "external", "label": "Message", "sublabel": "Hinglish, Devanagari, English", "width": 150 },
+    { "id": "reply", "lane": "person", "col": 5, "type": "frontend", "label": "Companion reply", "sublabel": "only after validation", "width": 150 },
+    { "id": "normalize", "lane": "gate", "col": 1, "type": "security", "label": "Normalize", "sublabel": "zero-width, homoglyph, leet", "width": 150 },
+    { "id": "detect", "lane": "gate", "col": 2, "type": "security", "label": "Signal detector", "sublabel": "8 flags, no risk score", "width": 150 },
+    { "id": "policy", "lane": "gate", "col": 3, "type": "security", "label": "State machine", "sublabel": "NORMAL to EMERGENCY", "tag": "sticky states", "width": 150 },
+    { "id": "memory", "lane": "gate", "col": 4, "type": "database", "label": "Risk memory", "sublabel": "flags across turns, no text", "width": 150 },
+    { "id": "template", "lane": "crisis", "col": 4, "type": "security", "label": "Fixed template", "sublabel": "clinician-reviewable copy", "width": 150 },
+    { "id": "calls", "lane": "crisis", "col": 5, "type": "external", "label": "112 and Tele-MANAS", "sublabel": "tap to call 112, 14416", "width": 150 },
+    { "id": "docs", "lane": "normal", "col": 2, "type": "database", "label": "Untrusted docs", "sublabel": "injection withheld", "width": 150 },
+    { "id": "llm", "lane": "normal", "col": 4, "type": "cloud", "label": "Companion model", "sublabel": "CBT-informed support", "width": 150 },
+    { "id": "validator", "lane": "normal", "col": 5, "type": "security", "label": "Output validator", "sublabel": "dose, diagnosis, canary", "width": 150 }
+  ],
+  "edges": [
+    { "id": "in", "from": "msg", "to": "normalize", "variant": "default" },
+    { "id": "norm-detect", "from": "normalize", "to": "detect", "variant": "default" },
+    { "id": "signals", "from": "detect", "to": "policy", "label": "signals", "variant": "emphasis" },
+    { "id": "remember", "from": "policy", "to": "memory", "label": "merge turns", "variant": "dashed", "role": "branch" },
+    { "id": "crisis-route", "from": "policy", "to": "template", "label": "crisis state", "variant": "security" },
+    { "id": "call-actions", "from": "template", "to": "calls", "variant": "security" },
+    { "id": "normal-route", "from": "policy", "to": "llm", "label": "NORMAL only", "variant": "default", "role": "branch" },
+    { "id": "data-only", "from": "docs", "to": "llm", "label": "data, not instructions", "variant": "dashed", "role": "branch" },
+    { "id": "screen", "from": "llm", "to": "validator", "variant": "default" },
+    { "id": "pass", "from": "validator", "to": "reply", "label": "pass", "variant": "emphasis", "role": "return" }
+  ],
+  "cards": [
+    { "dot": "rose", "title": "Guarantees", "items": [
+      "Crisis turns never reach the model",
+      "Jailbreak text cannot reset an active state",
+      "EMERGENCY makes 112 primary, Tele-MANAS secondary",
+      "Split disclosures across turns combine into EMERGENCY"
+    ] },
+    { "dot": "emerald", "title": "Proof", "items": [
+      "82 tests: corpus, multi-turn state, hostile-model gateway",
+      "13 of 13 guard mutations turn the suite red",
+      "66-case Hinglish, Devanagari, English adversarial corpus"
+    ] }
+  ]
+}
